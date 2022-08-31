@@ -1,0 +1,22 @@
+schemaVersion: 1.0
+phases:
+  - name: build
+    steps:
+      - name: InstallAnsibleAndGit
+        action: ExecuteBash
+        inputs:
+          commands:
+          - sudo amazon-linux-extras install -y ansible2
+          - sudo yum install -y git
+      - name: RunPlaybook
+        action: ExecuteBash
+        inputs:
+          commands:
+          - |
+            set -x
+            sudo su -l ec2-user -c '(
+            t=$(mktemp -d)
+            git clone --recurse-submodules https://github.com/whslabs/packer-cardano-node.git $t
+            cd $t/ansible/
+            ansible-playbook -idefault, -clocal playbook.yaml
+            )'

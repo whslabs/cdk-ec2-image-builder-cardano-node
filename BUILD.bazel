@@ -1,0 +1,32 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+load("@bazel_gazelle//:def.bzl", "gazelle")
+
+# gazelle:prefix github.com/whslabs/cdk-ec2-image-builder-cardano-node
+gazelle(name = "gazelle")
+
+go_library(
+    name = "cdk-ec2-image-builder-cardano-node_lib",
+    srcs = ["cdk-ec2-image-builder-cardano-node.go"],
+    importpath = "github.com/whslabs/cdk-ec2-image-builder-cardano-node",
+    visibility = ["//visibility:private"],
+    deps = [
+        "@com_github_aws_aws_cdk_go_awscdk_v2//:awscdk",
+        "@com_github_aws_aws_cdk_go_awscdk_v2//awsiam",
+        "@com_github_aws_aws_cdk_go_awscdk_v2//awsimagebuilder",
+        "@com_github_aws_aws_cdk_go_awscdk_v2//awss3",
+        "@com_github_aws_constructs_go_constructs_v10//:constructs",
+        "@com_github_aws_jsii_runtime_go//:jsii-runtime-go",
+    ],
+)
+
+go_binary(
+    name = "cdk-ec2-image-builder-cardano-node",
+    embed = [":cdk-ec2-image-builder-cardano-node_lib"],
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "cdk-ec2-image-builder-cardano-node_test",
+    srcs = ["cdk-ec2-image-builder-cardano-node_test.go"],
+    embed = [":cdk-ec2-image-builder-cardano-node_lib"],
+)

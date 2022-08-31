@@ -1,0 +1,3 @@
+```sh
+cdk deploy
+```
