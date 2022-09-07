@@ -149,7 +149,8 @@ func NewCdkEc2ImageBuilderCardanoNodeStack(scope constructs.Construct, id string
 				},
 			}),
 		}),
-		TrailName: jsii.String("CloudTrail1"),
+		SendToCloudWatchLogs: jsii.Bool(true),
+		TrailName:            jsii.String("CloudTrail1"),
 	})
 
 	// example resource
