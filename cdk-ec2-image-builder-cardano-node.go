@@ -6,8 +6,10 @@ import (
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	// "github.com/aws/aws-cdk-go/awscdk/v2/awssqs"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awscloudtrail"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsimagebuilder"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awskms"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awss3"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
@@ -57,8 +59,9 @@ func NewCdkEc2ImageBuilderCardanoNodeStack(scope constructs.Construct, id string
 		},
 	})
 
-	bucket := awss3.NewBucket(stack, jsii.String("Bucket"), &awss3.BucketProps{
+	bucket := awss3.NewBucket(stack, jsii.String("BucketS3"), &awss3.BucketProps{
 		BlockPublicAccess: awss3.BlockPublicAccess_BLOCK_ALL(),
+		Encryption:        awss3.BucketEncryption_KMS,
 	})
 
 	role := awsiam.NewRole(stack, jsii.String("Role"), &awsiam.RoleProps{
@@ -103,6 +106,50 @@ func NewCdkEc2ImageBuilderCardanoNodeStack(scope constructs.Construct, id string
 		InfrastructureConfigurationArn: infrastructureConfiguration.AttrArn(),
 		Name:                           jsii.String("cardano-node"),
 		Status:                         jsii.String("DISABLED"),
+	})
+
+	awscloudtrail.NewTrail(stack, jsii.String("CloudTrail"), &awscloudtrail.TrailProps{
+		Bucket: awss3.NewBucket(stack, jsii.String("BucketCloudTrail"), &awss3.BucketProps{
+			BlockPublicAccess: awss3.BlockPublicAccess_BLOCK_ALL(),
+		}),
+		EncryptionKey: awskms.NewKey(stack, jsii.String("Key"), &awskms.KeyProps{
+			Alias: jsii.String("cloudtrail1"),
+			Policy: awsiam.NewPolicyDocument(&awsiam.PolicyDocumentProps{
+				Statements: &[]awsiam.PolicyStatement{
+					awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+						Actions: &[]*string{
+							jsii.String("kms:*"),
+						},
+						Principals: &[]awsiam.IPrincipal{
+							awsiam.NewAccountRootPrincipal(),
+						},
+						Resources: &[]*string{
+							jsii.String("*"),
+						},
+					}),
+					awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+						Actions: &[]*string{
+							jsii.String("kms:GenerateDataKey*"),
+						},
+						Conditions: &map[string]interface{}{
+							"StringEquals": map[string]*string{
+								"AWS:SourceArn": awscdk.Fn_Sub(jsii.String("arn:${AWS::Partition}:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/CloudTrail1"), nil),
+							},
+							"StringLike": map[string]*string{
+								"kms:EncryptionContext:aws:cloudtrail:arn": awscdk.Fn_Sub(jsii.String("arn:${AWS::Partition}:cloudtrail:*:${AWS::AccountId}:trail/*"), nil),
+							},
+						},
+						Principals: &[]awsiam.IPrincipal{
+							awsiam.NewServicePrincipal(jsii.String("cloudtrail.amazonaws.com"), nil),
+						},
+						Resources: &[]*string{
+							jsii.String("*"),
+						},
+					}),
+				},
+			}),
+		}),
+		TrailName: jsii.String("CloudTrail1"),
 	})
 
 	// example resource
