@@ -10,6 +10,9 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsimagebuilder"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awskms"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awslogs"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awslogsdestinations"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awss3"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
@@ -61,7 +64,7 @@ func NewCdkEc2ImageBuilderCardanoNodeStack(scope constructs.Construct, id string
 
 	bucket := awss3.NewBucket(stack, jsii.String("BucketS3"), &awss3.BucketProps{
 		BlockPublicAccess: awss3.BlockPublicAccess_BLOCK_ALL(),
-		Encryption:        awss3.BucketEncryption_KMS,
+		// Encryption:        awss3.BucketEncryption_KMS,
 	})
 
 	role := awsiam.NewRole(stack, jsii.String("Role"), &awsiam.RoleProps{
@@ -108,7 +111,7 @@ func NewCdkEc2ImageBuilderCardanoNodeStack(scope constructs.Construct, id string
 		Status:                         jsii.String("DISABLED"),
 	})
 
-	awscloudtrail.NewTrail(stack, jsii.String("CloudTrail"), &awscloudtrail.TrailProps{
+	cloudtrail := awscloudtrail.NewTrail(stack, jsii.String("CloudTrail"), &awscloudtrail.TrailProps{
 		Bucket: awss3.NewBucket(stack, jsii.String("BucketCloudTrail"), &awss3.BucketProps{
 			BlockPublicAccess: awss3.BlockPublicAccess_BLOCK_ALL(),
 		}),
@@ -151,6 +154,18 @@ func NewCdkEc2ImageBuilderCardanoNodeStack(scope constructs.Construct, id string
 		}),
 		SendToCloudWatchLogs: jsii.Bool(true),
 		TrailName:            jsii.String("CloudTrail1"),
+	})
+
+	lambda := awslambda.NewFunction(stack, jsii.String("Function"), &awslambda.FunctionProps{
+		Code:    awslambda.NewInlineCode(jsii.String("exports.handler = async () => { console.log('Image created!'); };")),
+		Handler: jsii.String("index.handler"),
+		Runtime: awslambda.Runtime_NODEJS_16_X(),
+	})
+
+	awslogs.NewSubscriptionFilter(stack, jsii.String("SubscriptionFilter"), &awslogs.SubscriptionFilterProps{
+		Destination:   awslogsdestinations.NewLambdaDestination(lambda, nil),
+		FilterPattern: awslogs.FilterPattern_All(awslogs.FilterPattern_StringValue(jsii.String("$.userAgent"), jsii.String("="), jsii.String("imagebuilder.amazonaws.com")), awslogs.FilterPattern_StringValue(jsii.String("$.eventName"), jsii.String("="), jsii.String("CreateImage"))),
+		LogGroup:      cloudtrail.LogGroup(),
 	})
 
 	// example resource
