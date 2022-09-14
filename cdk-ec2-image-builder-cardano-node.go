@@ -62,9 +62,45 @@ func NewCdkEc2ImageBuilderCardanoNodeStack(scope constructs.Construct, id string
 		},
 	})
 
-	bucket := awss3.NewBucket(stack, jsii.String("BucketS3"), &awss3.BucketProps{
+	bucket := awss3.NewBucket(stack, jsii.String("BucketEC2ImageBuilder"), &awss3.BucketProps{
+		BucketName:        jsii.String("ec2-image-builder-cardano-node"),
 		BlockPublicAccess: awss3.BlockPublicAccess_BLOCK_ALL(),
-		// Encryption:        awss3.BucketEncryption_KMS,
+		EncryptionKey: awskms.NewKey(stack, jsii.String("KeyEC2ImageBuilder"), &awskms.KeyProps{
+			Policy: awsiam.NewPolicyDocument(&awsiam.PolicyDocumentProps{
+				Statements: &[]awsiam.PolicyStatement{
+					awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+						Actions: &[]*string{
+							jsii.String("kms:*"),
+						},
+						Principals: &[]awsiam.IPrincipal{
+							awsiam.NewAccountRootPrincipal(),
+						},
+						Resources: &[]*string{
+							jsii.String("*"),
+						},
+					}),
+					awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+						Actions: &[]*string{
+							jsii.String("kms:GenerateDataKey*"),
+						},
+						Conditions: &map[string]interface{}{
+							"StringEquals": map[string]*string{
+								"kms:CallerAccount": awscdk.Fn_Sub(jsii.String("${AWS::AccountId}"), nil),
+							},
+							"StringLike": map[string]*string{
+								"kms:EncryptionContext:aws:s3:arn": awscdk.Fn_Sub(jsii.String("arn:${AWS::Partition}:s3:::ec2-image-builder-cardano-node/*"), nil),
+							},
+						},
+						Principals: &[]awsiam.IPrincipal{
+							awsiam.NewAnyPrincipal(),
+						},
+						Resources: &[]*string{
+							jsii.String("*"),
+						},
+					}),
+				},
+			}),
+		}),
 	})
 
 	role := awsiam.NewRole(stack, jsii.String("Role"), &awsiam.RoleProps{
@@ -115,7 +151,7 @@ func NewCdkEc2ImageBuilderCardanoNodeStack(scope constructs.Construct, id string
 		Bucket: awss3.NewBucket(stack, jsii.String("BucketCloudTrail"), &awss3.BucketProps{
 			BlockPublicAccess: awss3.BlockPublicAccess_BLOCK_ALL(),
 		}),
-		EncryptionKey: awskms.NewKey(stack, jsii.String("Key"), &awskms.KeyProps{
+		EncryptionKey: awskms.NewKey(stack, jsii.String("KeyCloudTrail"), &awskms.KeyProps{
 			Alias: jsii.String("cloudtrail1"),
 			Policy: awsiam.NewPolicyDocument(&awsiam.PolicyDocumentProps{
 				Statements: &[]awsiam.PolicyStatement{
