@@ -243,7 +243,7 @@ func NewCdkEc2ImageBuilderCardanoNodeStack(scope constructs.Construct, id string
 		    "kms:CallerAccount": "${AWS::AccountId}"
                 },
                 "StringLike": {
-		    "kms:EncryptionContext:aws:s3:arn": "${BucketArn}"
+		    "kms:EncryptionContext:aws:s3:arn": "${BucketArn}/*"
                 }
             }
         }
