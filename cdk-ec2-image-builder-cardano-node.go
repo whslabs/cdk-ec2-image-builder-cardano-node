@@ -200,6 +200,12 @@ func NewCdkEc2ImageBuilderCardanoNodeStack(scope constructs.Construct, id string
 		Runtime: awslambda.Runtime_NODEJS_16_X(),
 	})
 
+	lambda.AddPermission(jsii.String("Permission"), &awslambda.Permission{
+		Principal: awsiam.NewServicePrincipal(jsii.String("logs.amazonaws.com"), nil),
+		Action:    jsii.String("lambda:InvokeFunction"),
+		SourceArn: cloudtrail.LogGroup().LogGroupArn(),
+	})
+
 	awslogs.NewSubscriptionFilter(stack, jsii.String("SubscriptionFilter"), &awslogs.SubscriptionFilterProps{
 		Destination:   awslogsdestinations.NewLambdaDestination(lambda, nil),
 		FilterPattern: awslogs.FilterPattern_All(awslogs.FilterPattern_StringValue(jsii.String("$.userAgent"), jsii.String("="), jsii.String("imagebuilder.amazonaws.com")), awslogs.FilterPattern_StringValue(jsii.String("$.eventName"), jsii.String("="), jsii.String("CreateImage"))),
