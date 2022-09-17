@@ -173,10 +173,8 @@ func NewCdkEc2ImageBuilderCardanoNodeStack(scope constructs.Construct, id string
 							jsii.String("kms:GenerateDataKey*"),
 						},
 						Conditions: &map[string]interface{}{
-							"StringEquals": map[string]*string{
-								"AWS:SourceArn": awscdk.Fn_Sub(jsii.String("arn:${AWS::Partition}:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/CloudTrail1"), nil),
-							},
 							"StringLike": map[string]*string{
+								"AWS:SourceArn": awscdk.Fn_Sub(jsii.String("arn:${AWS::Partition}:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/*"), nil),
 								"kms:EncryptionContext:aws:cloudtrail:arn": awscdk.Fn_Sub(jsii.String("arn:${AWS::Partition}:cloudtrail:*:${AWS::AccountId}:trail/*"), nil),
 							},
 						},
@@ -191,7 +189,6 @@ func NewCdkEc2ImageBuilderCardanoNodeStack(scope constructs.Construct, id string
 			}),
 		}),
 		SendToCloudWatchLogs: jsii.Bool(true),
-		TrailName:            jsii.String("CloudTrail1"),
 	})
 
 	lambda := awslambda.NewFunction(stack, jsii.String("Function"), &awslambda.FunctionProps{
