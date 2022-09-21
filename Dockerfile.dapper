@@ -1,0 +1,10 @@
+FROM node:18.9
+
+RUN npm i -g @bazel/bazelisk
+RUN npm i -g aws-cdk
+
+ARG HOME
+ENV DAPPER_RUN_ARGS -v $HOME/.aws/:/root/.aws/
+WORKDIR /source/
+
+ENTRYPOINT ["./dapper.sh"]
