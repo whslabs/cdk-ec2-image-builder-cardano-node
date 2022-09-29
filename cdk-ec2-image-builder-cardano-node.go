@@ -9,12 +9,12 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awscloudtrail"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsimagebuilder"
-	"github.com/aws/aws-cdk-go/awscdk/v2/awskms"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslogs"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslogsdestinations"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awss3"
-	"github.com/aws/aws-cdk-go/awscdk/v2/customresources"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awssns"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awssnssubscriptions"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 )
@@ -38,13 +38,13 @@ func NewCdkEc2ImageBuilderCardanoNodeStack(scope constructs.Construct, id string
 	// The code that defines your stack goes here
 	component := awsimagebuilder.NewCfnComponent(stack, jsii.String("Component"), &awsimagebuilder.CfnComponentProps{
 		Data:     jsii.String(string(content)),
-		Name:     jsii.String("install-cardano-node"),
+		Name:     jsii.String("whslabs-cardano-node"),
 		Platform: jsii.String("Linux"),
 		Version:  jsii.String("1.0.0"),
 	})
 
 	imageRecipe := awsimagebuilder.NewCfnImageRecipe(stack, jsii.String("ImageRecipe"), &awsimagebuilder.CfnImageRecipeProps{
-		Name:        jsii.String("cardano-node"),
+		Name:        jsii.String("whslabs-cardano-node"),
 		ParentImage: awscdk.Fn_Sub(jsii.String("arn:${AWS::Partition}:imagebuilder:${AWS::Region}:aws:image/amazon-linux-2-x86/x.x.x"), nil),
 		Version:     jsii.String("1.0.0"),
 		BlockDeviceMappings: []interface{}{
@@ -63,46 +63,9 @@ func NewCdkEc2ImageBuilderCardanoNodeStack(scope constructs.Construct, id string
 		},
 	})
 
-	keyEc2ImageBuilder := awskms.NewKey(stack, jsii.String("KeyEC2ImageBuilder"), &awskms.KeyProps{
-		Policy: awsiam.NewPolicyDocument(&awsiam.PolicyDocumentProps{
-			Statements: &[]awsiam.PolicyStatement{
-				awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
-					Actions: &[]*string{
-						jsii.String("kms:*"),
-					},
-					Principals: &[]awsiam.IPrincipal{
-						awsiam.NewAccountRootPrincipal(),
-					},
-					Resources: &[]*string{
-						jsii.String("*"),
-					},
-				}),
-				awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
-					Actions: &[]*string{
-						jsii.String("kms:GenerateDataKey*"),
-					},
-					Conditions: &map[string]interface{}{
-						"StringEquals": map[string]*string{
-							"kms:CallerAccount": awscdk.Fn_Sub(jsii.String("${AWS::AccountId}"), nil),
-						},
-						"StringLike": map[string]*string{
-							"kms:EncryptionContext:aws:s3:arn": jsii.String("*"),
-						},
-					},
-					Principals: &[]awsiam.IPrincipal{
-						awsiam.NewAnyPrincipal(),
-					},
-					Resources: &[]*string{
-						jsii.String("*"),
-					},
-				}),
-			},
-		}),
-	})
-
 	bucket := awss3.NewBucket(stack, jsii.String("BucketEC2ImageBuilder"), &awss3.BucketProps{
 		BlockPublicAccess: awss3.BlockPublicAccess_BLOCK_ALL(),
-		EncryptionKey:     keyEc2ImageBuilder,
+		RemovalPolicy:     awscdk.RemovalPolicy_DESTROY,
 	})
 
 	role := awsiam.NewRole(stack, jsii.String("Role"), &awsiam.RoleProps{
@@ -134,7 +97,7 @@ func NewCdkEc2ImageBuilderCardanoNodeStack(scope constructs.Construct, id string
 
 	infrastructureConfiguration := awsimagebuilder.NewCfnInfrastructureConfiguration(stack, jsii.String("InfrastructureConfiguration"), &awsimagebuilder.CfnInfrastructureConfigurationProps{
 		InstanceProfileName: instanceProfile.Ref(),
-		Name:                jsii.String("cardano-node"),
+		Name:                jsii.String("whslabs-cardano-node"),
 		Logging: &awsimagebuilder.CfnInfrastructureConfiguration_LoggingProperty{
 			S3Logs: &awsimagebuilder.CfnInfrastructureConfiguration_S3LogsProperty{
 				S3BucketName: bucket.BucketName(),
@@ -145,50 +108,15 @@ func NewCdkEc2ImageBuilderCardanoNodeStack(scope constructs.Construct, id string
 	awsimagebuilder.NewCfnImagePipeline(stack, jsii.String("ImagePipline"), &awsimagebuilder.CfnImagePipelineProps{
 		ImageRecipeArn:                 imageRecipe.AttrArn(),
 		InfrastructureConfigurationArn: infrastructureConfiguration.AttrArn(),
-		Name:                           jsii.String("cardano-node"),
+		Name:                           jsii.String("whslabs-cardano-node"),
 		Status:                         jsii.String("DISABLED"),
-	})
-
-	keyCloudTrail := awskms.NewKey(stack, jsii.String("KeyCloudTrail"), &awskms.KeyProps{
-		Policy: awsiam.NewPolicyDocument(&awsiam.PolicyDocumentProps{
-			Statements: &[]awsiam.PolicyStatement{
-				awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
-					Actions: &[]*string{
-						jsii.String("kms:*"),
-					},
-					Principals: &[]awsiam.IPrincipal{
-						awsiam.NewAccountRootPrincipal(),
-					},
-					Resources: &[]*string{
-						jsii.String("*"),
-					},
-				}),
-				awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
-					Actions: &[]*string{
-						jsii.String("kms:GenerateDataKey*"),
-					},
-					Conditions: &map[string]interface{}{
-						"StringLike": map[string]*string{
-							"AWS:SourceArn": awscdk.Fn_Sub(jsii.String("arn:${AWS::Partition}:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/*"), nil),
-							"kms:EncryptionContext:aws:cloudtrail:arn": awscdk.Fn_Sub(jsii.String("arn:${AWS::Partition}:cloudtrail:*:${AWS::AccountId}:trail/*"), nil),
-						},
-					},
-					Principals: &[]awsiam.IPrincipal{
-						awsiam.NewServicePrincipal(jsii.String("cloudtrail.amazonaws.com"), nil),
-					},
-					Resources: &[]*string{
-						jsii.String("*"),
-					},
-				}),
-			},
-		}),
 	})
 
 	cloudtrail := awscloudtrail.NewTrail(stack, jsii.String("CloudTrail"), &awscloudtrail.TrailProps{
 		Bucket: awss3.NewBucket(stack, jsii.String("BucketCloudTrail"), &awss3.BucketProps{
 			BlockPublicAccess: awss3.BlockPublicAccess_BLOCK_ALL(),
+			RemovalPolicy:     awscdk.RemovalPolicy_DESTROY,
 		}),
-		EncryptionKey:        keyCloudTrail,
 		SendToCloudWatchLogs: jsii.Bool(true),
 	})
 
@@ -210,97 +138,9 @@ func NewCdkEc2ImageBuilderCardanoNodeStack(scope constructs.Construct, id string
 		LogGroup:      cloudtrail.LogGroup(),
 	})
 
-	customresources.NewAwsCustomResource(stack, jsii.String("CustomResourceKeyEc2ImageBuilder"), &customresources.AwsCustomResourceProps{
-		OnCreate: &customresources.AwsSdkCall{
-			Action:             jsii.String("putKeyPolicy"),
-			Service:            jsii.String("KMS"),
-			PhysicalResourceId: customresources.PhysicalResourceId_Of(jsii.String("custom-resource")),
-			Parameters: map[string]*string{
-				"KeyId":      keyEc2ImageBuilder.KeyId(),
-				"PolicyName": jsii.String("default"),
-				"Policy": awscdk.Fn_Sub(jsii.String(`{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Principal": {
-		"AWS": "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"
-            },
-            "Action": "kms:*",
-            "Resource": "*"
-        },
-        {
-            "Effect": "Allow",
-            "Principal": {
-                "AWS": "*"
-            },
-            "Action": "kms:GenerateDataKey*",
-            "Resource": "*",
-            "Condition": {
-                "StringEquals": {
-		    "kms:CallerAccount": "${AWS::AccountId}"
-                },
-                "StringLike": {
-		    "kms:EncryptionContext:aws:s3:arn": "${Arn}/*"
-                }
-            }
-        }
-    ]
-}`), &map[string]*string{
-					"Arn": bucket.BucketArn(),
-				}),
-			},
-		},
-		Policy: customresources.AwsCustomResourcePolicy_FromSdkCalls(&customresources.SdkCallsPolicyOptions{
-			Resources: customresources.AwsCustomResourcePolicy_ANY_RESOURCE(),
-		}),
-	})
+	topic := awssns.NewTopic(stack, jsii.String("Topic"), nil)
 
-	customresources.NewAwsCustomResource(stack, jsii.String("CustomResourceKeyCloudTrail"), &customresources.AwsCustomResourceProps{
-		OnCreate: &customresources.AwsSdkCall{
-			Action:             jsii.String("putKeyPolicy"),
-			Service:            jsii.String("KMS"),
-			PhysicalResourceId: customresources.PhysicalResourceId_Of(jsii.String("custom-recource")),
-			Parameters: map[string]*string{
-				"KeyId":      keyCloudTrail.KeyId(),
-				"PolicyName": jsii.String("default"),
-				"Policy": awscdk.Fn_Sub(jsii.String(`{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Principal": {
-		"AWS": "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"
-            },
-            "Action": "kms:*",
-            "Resource": "*"
-        },
-        {
-            "Effect": "Allow",
-            "Principal": {
-                "Service": "cloudtrail.amazonaws.com"
-            },
-            "Action": "kms:GenerateDataKey*",
-            "Resource": "*",
-            "Condition": {
-                "StringEquals": {
-		    "AWS:SourceArn": "${Arn}"
-                },
-                "StringLike": {
-		    "kms:EncryptionContext:aws:cloudtrail:arn": "arn:${AWS::Partition}:cloudtrail:*:${AWS::AccountId}:trail/*"
-                }
-            }
-        }
-    ]
-}`), &map[string]*string{
-					"Arn": cloudtrail.TrailArn(),
-				}),
-			},
-		},
-		Policy: customresources.AwsCustomResourcePolicy_FromSdkCalls(&customresources.SdkCallsPolicyOptions{
-			Resources: customresources.AwsCustomResourcePolicy_ANY_RESOURCE(),
-		}),
-	})
+	topic.AddSubscription(awssnssubscriptions.NewEmailSubscription(jsii.String("hswongac@gmail.com"), nil))
 
 	// example resource
 	// queue := awssqs.NewQueue(stack, jsii.String("CdkEc2ImageBuilderCardanoNodeQueue"), &awssqs.QueueProps{
