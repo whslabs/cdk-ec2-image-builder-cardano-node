@@ -2,6 +2,8 @@
 
 set -ex
 
+dockerd &
+
 cdk bootstrap
 
 cdk synth

@@ -1,10 +1,28 @@
+FROM docker:dind
+
 FROM node:18.9
 
-RUN apt-get update
+RUN echo "deb http://deb.debian.org/debian bullseye-backports main contrib non-free"|tee -a /etc/apt/sources.list && apt-get update
 
-RUN apt-get install -y groff
-RUN apt-get install -y less
-RUN apt-get install -y vim
+RUN apt-get install -y \
+  -t bullseye-backports zfsutils-linux \
+  btrfs-progs \
+  e2fsprogs \
+  groff \
+  iptables \
+  less \
+  musl \
+  openssl \
+  pigz \
+  uidmap \
+  vim \
+  xfsprogs \
+  xz-utils \
+  ;
+
+COPY --from=0 /usr/local/bin/ /usr/local/bin/
+COPY --from=0 /usr/sbin/addgroup /usr/sbin/addgroup
+COPY --from=0 /usr/sbin/adduser /usr/sbin/adduser
 RUN curl -L https://go.dev/dl/go1.19.1.linux-amd64.tar.gz | tar -C /usr/local/ -xzf -
 RUN f=$(mktemp); d=$(mktemp -d); curl -o $f https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip; unzip -d $d $f; $d/aws/install; rm $f; rm -rf $d
 RUN git clone https://github.com/fatih/vim-go.git /root/.vim/pack/plugins/start/vim-go
@@ -13,8 +31,14 @@ RUN npm i -g aws-cdk
 
 RUN export PATH=$PATH:/usr/local/go/bin; vim +GoInstallBinaries +q
 
+RUN addgroup -S dockremap
+
+RUN adduser -S -G dockremap dockremap
+RUN echo 'dockremap:165536:65536' >> /etc/subgid
+RUN echo 'dockremap:165536:65536' >> /etc/subuid
+
 ARG HOME
-ENV DAPPER_RUN_ARGS -v $HOME/.aws/:/root/.aws/
+ENV DAPPER_RUN_ARGS -v $HOME/.aws/:/root/.aws/ --privileged
 ENV PATH $PATH:/usr/local/go/bin
 WORKDIR /source/
 
