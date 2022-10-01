@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslogs"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslogsdestinations"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awss3"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awss3assets"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awssns"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awssnssubscriptions"
 	"github.com/aws/constructs-go/constructs/v10"
@@ -63,12 +64,12 @@ func NewCdkEc2ImageBuilderCardanoNodeStack(scope constructs.Construct, id string
 		},
 	})
 
-	bucket := awss3.NewBucket(stack, jsii.String("BucketEC2ImageBuilder"), &awss3.BucketProps{
+	bucket := awss3.NewBucket(stack, jsii.String("BucketImageBuilder"), &awss3.BucketProps{
 		BlockPublicAccess: awss3.BlockPublicAccess_BLOCK_ALL(),
 		RemovalPolicy:     awscdk.RemovalPolicy_DESTROY,
 	})
 
-	role := awsiam.NewRole(stack, jsii.String("Role"), &awsiam.RoleProps{
+	roleImageBuilder := awsiam.NewRole(stack, jsii.String("RoleImageBuilder"), &awsiam.RoleProps{
 		AssumedBy: awsiam.NewServicePrincipal(jsii.String("ec2.amazonaws.com"), nil),
 		ManagedPolicies: &[]awsiam.IManagedPolicy{
 			awsiam.ManagedPolicy_FromAwsManagedPolicyName(jsii.String("AmazonSSMManagedInstanceCore")),
@@ -76,7 +77,7 @@ func NewCdkEc2ImageBuilderCardanoNodeStack(scope constructs.Construct, id string
 		},
 	})
 
-	role.AttachInlinePolicy(awsiam.NewPolicy(stack, jsii.String("Policy"), &awsiam.PolicyProps{
+	roleImageBuilder.AttachInlinePolicy(awsiam.NewPolicy(stack, jsii.String("PolicyImageBuilder"), &awsiam.PolicyProps{
 		Statements: &[]awsiam.PolicyStatement{
 			awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
 				Actions: &[]*string{
@@ -91,7 +92,7 @@ func NewCdkEc2ImageBuilderCardanoNodeStack(scope constructs.Construct, id string
 
 	instanceProfile := awsiam.NewCfnInstanceProfile(stack, jsii.String("InstanceProfile"), &awsiam.CfnInstanceProfileProps{
 		Roles: &[]*string{
-			role.RoleName(),
+			roleImageBuilder.RoleName(),
 		},
 	})
 
@@ -120,10 +121,44 @@ func NewCdkEc2ImageBuilderCardanoNodeStack(scope constructs.Construct, id string
 		SendToCloudWatchLogs: jsii.Bool(true),
 	})
 
+	topic := awssns.NewTopic(stack, jsii.String("Topic"), nil)
+
+	topic.AddSubscription(awssnssubscriptions.NewEmailSubscription(jsii.String("hswongac@gmail.com"), nil))
+
+	roleFunction := awsiam.NewRole(stack, jsii.String("RoleFunction"), &awsiam.RoleProps{
+		AssumedBy: awsiam.NewServicePrincipal(jsii.String("lambda.amazonaws.com"), nil),
+	})
+
+	roleFunction.AttachInlinePolicy(awsiam.NewPolicy(stack, jsii.String("PolicyFunction"), &awsiam.PolicyProps{
+		Statements: &[]awsiam.PolicyStatement{
+			awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+				Actions: &[]*string{
+					jsii.String("sns:Publish"),
+				},
+				Resources: &[]*string{
+					topic.TopicArn(),
+				},
+			}),
+		},
+	}))
+
 	lambda := awslambda.NewFunction(stack, jsii.String("Function"), &awslambda.FunctionProps{
-		Code:    awslambda.NewInlineCode(jsii.String("exports.handler = async () => { console.log('Image created!'); };")),
-		Handler: jsii.String("index.handler"),
-		Runtime: awslambda.Runtime_NODEJS_16_X(),
+		Code: awslambda.Code_FromAsset(jsii.String("lambda-cloudtrail/"), &awss3assets.AssetOptions{
+			Bundling: &awscdk.BundlingOptions{
+				Image: awscdk.DockerImage_FromBuild(jsii.String("./"), &awscdk.DockerBuildOptions{
+					File: jsii.String("Dockerfile.lambda"),
+				}),
+				Command:    &[]*string{jsii.String("cargo lambda build -r && cp target/lambda/rust-lambda-cloudtrail/bootstrap /asset-output/")},
+				Entrypoint: &[]*string{jsii.String("/bin/bash"), jsii.String("-c")},
+				User:       jsii.String("root:root"),
+			},
+		}),
+		Handler: jsii.String("dummy"),
+		Runtime: awslambda.Runtime_PROVIDED_AL2(),
+		Environment: &map[string]*string{
+			"TOPIC_ARN": topic.TopicArn(),
+		},
+		Role: roleFunction,
 	})
 
 	lambda.AddPermission(jsii.String("Permission"), &awslambda.Permission{
@@ -137,10 +172,6 @@ func NewCdkEc2ImageBuilderCardanoNodeStack(scope constructs.Construct, id string
 		FilterPattern: awslogs.FilterPattern_All(awslogs.FilterPattern_StringValue(jsii.String("$.userAgent"), jsii.String("="), jsii.String("imagebuilder.amazonaws.com")), awslogs.FilterPattern_StringValue(jsii.String("$.eventName"), jsii.String("="), jsii.String("CreateImage"))),
 		LogGroup:      cloudtrail.LogGroup(),
 	})
-
-	topic := awssns.NewTopic(stack, jsii.String("Topic"), nil)
-
-	topic.AddSubscription(awssnssubscriptions.NewEmailSubscription(jsii.String("hswongac@gmail.com"), nil))
 
 	// example resource
 	// queue := awssqs.NewQueue(stack, jsii.String("CdkEc2ImageBuilderCardanoNodeQueue"), &awssqs.QueueProps{

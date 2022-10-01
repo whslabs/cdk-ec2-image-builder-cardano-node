@@ -18,6 +18,7 @@ go_library(
         "@com_github_aws_aws_cdk_go_awscdk_v2//awslogs",
         "@com_github_aws_aws_cdk_go_awscdk_v2//awslogsdestinations",
         "@com_github_aws_aws_cdk_go_awscdk_v2//awss3",
+        "@com_github_aws_aws_cdk_go_awscdk_v2//awss3assets",
         "@com_github_aws_aws_cdk_go_awscdk_v2//awssns",
         "@com_github_aws_aws_cdk_go_awscdk_v2//awssnssubscriptions",
         "@com_github_aws_constructs_go_constructs_v10//:constructs",
