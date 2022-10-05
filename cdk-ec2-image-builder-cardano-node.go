@@ -139,6 +139,16 @@ func NewCdkEc2ImageBuilderCardanoNodeStack(scope constructs.Construct, id string
 					topic.TopicArn(),
 				},
 			}),
+			awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+				Actions: &[]*string{
+					jsii.String("logs:CreateLogGroup"),
+					jsii.String("logs:CreateLogStream"),
+					jsii.String("logs:PutLogEvents"),
+				},
+				Resources: &[]*string{
+					jsii.String("*"),
+				},
+			}),
 		},
 	}))
 
