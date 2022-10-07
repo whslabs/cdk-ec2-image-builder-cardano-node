@@ -166,7 +166,8 @@ func NewCdkEc2ImageBuilderCardanoNodeStack(scope constructs.Construct, id string
 		Handler: jsii.String("dummy"),
 		Runtime: awslambda.Runtime_PROVIDED_AL2(),
 		Environment: &map[string]*string{
-			"TOPIC_ARN": topic.TopicArn(),
+			"CLOUDWATCH_BASE_URL": jsii.String("https://us-east-1.console.aws.amazon.com/cloudwatch/home?region=us-east-1#logsV2:log-groups/log-group/$252Faws$252Fimagebuilder$252F"),
+			"TOPIC_ARN":           topic.TopicArn(),
 		},
 		Role: roleFunction,
 	})
