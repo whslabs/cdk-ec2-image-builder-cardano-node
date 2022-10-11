@@ -11,7 +11,10 @@ all: bin/dapper
 	@bin/dapper
 
 s shell: bin/dapper
-	@bin/dapper -s
+	@bin/dapper \
+		-m bind \
+		-s \
+		;
 
 clean:
 	rm -rf bin/
