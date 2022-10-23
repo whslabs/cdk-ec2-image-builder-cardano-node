@@ -1,3 +1,0 @@
-[submodule "lambda-cloudtrail"]
-	path = lambda-cloudtrail
-	url = https://github.com/whslabs/rust-lambda-cloudtrail.git
