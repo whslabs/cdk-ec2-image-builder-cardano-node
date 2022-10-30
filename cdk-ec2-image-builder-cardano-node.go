@@ -159,7 +159,7 @@ func NewCdkEc2ImageBuilderCardanoNodeStack(scope constructs.Construct, id string
 				Command: &[]*string{jsii.String(`nix build \
 --extra-experimental-features flakes \
 --extra-experimental-features nix-command \
-&& cp result/bin/rust-lambda-cloudtrail /asset-output/bootstrap`)},
+&& cp result-bin/bin/rust-lambda-cloudtrail /asset-output/bootstrap`)},
 				Entrypoint: &[]*string{jsii.String("/bin/sh"), jsii.String("-c")},
 				User:       jsii.String("root:root"),
 			},
