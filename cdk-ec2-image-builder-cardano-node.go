@@ -155,11 +155,10 @@ func NewCdkEc2ImageBuilderCardanoNodeStack(scope constructs.Construct, id string
 	lambda := awslambda.NewFunction(stack, jsii.String("Function"), &awslambda.FunctionProps{
 		Code: awslambda.Code_FromAsset(jsii.String("./"), &awss3assets.AssetOptions{
 			Bundling: &awscdk.BundlingOptions{
-				Image: awscdk.DockerImage_FromRegistry(jsii.String("nixos/nix")),
-				Command: &[]*string{jsii.String(`nix build \
---extra-experimental-features flakes \
---extra-experimental-features nix-command \
-&& cp result-bin/bin/rust-lambda-cloudtrail /asset-output/bootstrap`)},
+				Image: awscdk.DockerImage_FromBuild(jsii.String("./"), &awscdk.DockerBuildOptions{
+					File: jsii.String("Dockerfile.lambda"),
+				}),
+				Command:    &[]*string{jsii.String(`nix build && cp result-bin/bin/rust-lambda-cloudtrail /asset-output/bootstrap`)},
 				Entrypoint: &[]*string{jsii.String("/bin/sh"), jsii.String("-c")},
 				User:       jsii.String("root:root"),
 			},
