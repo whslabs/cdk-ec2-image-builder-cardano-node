@@ -68,11 +68,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1667206619,
-        "narHash": "sha256-PpGF44ghNXlNpGspo2CUebWzH0INHeZr/aT8FzruCco=",
+        "lastModified": 1667396131,
+        "narHash": "sha256-XYdZsrYZ0qZotZFANDDN2ftCswQyzwwfm17ch9Jhm4E=",
         "owner": "whslabs",
         "repo": "rust-lambda-cloudtrail",
-        "rev": "ccd883ea441f58cfb178ced79dbf60e5a7b9ffaf",
+        "rev": "ea4b152460962b1a32c304347e682e0de1f365d4",
         "type": "github"
       },
       "original": {
